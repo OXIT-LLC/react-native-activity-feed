@@ -53,7 +53,7 @@
   "main": "./src/index.js",
   "scripts": {
     "build": "yarn build-translations",
-    "eslint": "eslint '**/*.{js,md}' --max-warnings 0",
+    "eslint": "eslint '**/*.{js,md}' --max-warnings 1000",
     "prettier": "prettier --list-different '**/*.{js,ts,md,json}' .eslintrc.json .prettierrc .babelrc",
     "prettier-fix": "prettier --write '**/*.{js,ts,md,json}' .eslintrc.json .prettierrc .babelrc",
     "build-translations": "yarn run babel --config-file ./babel.i18next-extract.json 'src/components/**/*.{js,jsx,ts,tsx}' --quiet && yarn lint-fix",
