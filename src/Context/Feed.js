@@ -211,8 +211,7 @@ export class FeedManager {
     });
   };
 
-  onAddReactionLocal = async (kind, activity, data, options = {}, reaction) => {
-    console.log("INSIDE ONADDREACTIONLOCAL ===> ", kind, activity, data, options = {}, reaction);
+  onAddReactionLocal = (kind, activity, data, options = {}, reaction) => {
     this.trackAnalytics(kind, activity, options.trackAnalytics);
     const enrichedReaction = immutable.fromJS({
       ...reaction,
@@ -303,7 +302,7 @@ export class FeedManager {
     });
   };
 
-  onRemoveReactionLocal = async (kind, activity, id, options = {}) => {
+  onRemoveReactionLocal = (kind, activity, id, options = {}) => {
     this.trackAnalytics('un' + kind, activity, options.trackAnalytics);
     if (this.state.reactionActivities[id]) {
       this._removeActivityFromState(this.state.reactionActivities[id]);
