@@ -211,10 +211,49 @@ export class FeedManager {
     });
   };
 
+  onAddReactionLocal = async (kind, activity, data, options = {}, reaction) => {
+    console.log("INSIDE ONADDREACTIONLOCAL ===> ", kind, activity, data, options = {}, reaction);
+    this.trackAnalytics(kind, activity, options.trackAnalytics);
+    const enrichedReaction = immutable.fromJS({
+      ...reaction,
+      user: this.props.user.full,
+    });
+
+    this.setState((prevState) => {
+      let { activities } = prevState;
+      const { reactionIdToPaths } = prevState;
+      for (const path of this.getActivityPaths(activity)) {
+        this.removeFoundReactionIdPaths(
+          activities.getIn(path).toJS(),
+          reactionIdToPaths,
+          path,
+        );
+
+        activities = activities
+          .updateIn([...path, 'reaction_counts', kind], (v = 0) => v + 1)
+          .updateIn([...path, 'own_reactions', kind], (v = immutable.List()) =>
+            v.unshift(enrichedReaction),
+          )
+          .updateIn(
+            [...path, 'latest_reactions', kind],
+            (v = immutable.List()) => v.unshift(enrichedReaction),
+          );
+
+        this.addFoundReactionIdPaths(
+          activities.getIn(path).toJS(),
+          reactionIdToPaths,
+          path,
+        );
+      }
+
+      return { activities, reactionIdToPaths };
+    });
+  };
+
   onRemoveReaction = async (kind, activity, id, options = {}) => {
     try {
       if (this.props.doReactionDeleteRequest) {
-        await this.props.doReactionDeleteRequest(id);
+        await this.props.doReactionDeleteRequest(kind, activity, id, options);
       } else {
         await this.props.client.reactions.delete(id);
       }
@@ -227,6 +266,44 @@ export class FeedManager {
       });
       return;
     }
+    this.trackAnalytics('un' + kind, activity, options.trackAnalytics);
+    if (this.state.reactionActivities[id]) {
+      this._removeActivityFromState(this.state.reactionActivities[id]);
+    }
+
+    return this.setState((prevState) => {
+      let { activities } = prevState;
+      const { reactionIdToPaths } = prevState;
+      for (const path of this.getActivityPaths(activity)) {
+        this.removeFoundReactionIdPaths(
+          activities.getIn(path).toJS(),
+          reactionIdToPaths,
+          path,
+        );
+
+        activities = activities
+          .updateIn([...path, 'reaction_counts', kind], (v = 0) => v - 1)
+          .updateIn([...path, 'own_reactions', kind], (v = immutable.List()) =>
+            v.remove(v.findIndex((r) => r.get('id') === id)),
+          )
+          .updateIn(
+            [...path, 'latest_reactions', kind],
+            (v = immutable.List()) =>
+              v.remove(v.findIndex((r) => r.get('id') === id)),
+          );
+
+        this.addFoundReactionIdPaths(
+          activities.getIn(path).toJS(),
+          reactionIdToPaths,
+          path,
+        );
+      }
+
+      return { activities, reactionIdToPaths };
+    });
+  };
+
+  onRemoveReactionLocal = async (kind, activity, id, options = {}) => {
     this.trackAnalytics('un' + kind, activity, options.trackAnalytics);
     if (this.state.reactionActivities[id]) {
       this._removeActivityFromState(this.state.reactionActivities[id]);
@@ -1289,9 +1366,12 @@ class FeedInner extends React.Component {
     const state = manager.state;
     return {
       getActivityPath: manager.getActivityPath,
+      getActivityPaths: manager.getActivityPaths,
       onToggleReaction: manager.onToggleReaction,
       onAddReaction: manager.onAddReaction,
+      onAddReactionLocal: manager.onAddReactionLocal,
       onRemoveReaction: manager.onRemoveReaction,
+      onRemoveReactionLocal: manager.onRemoveReactionLocal,
       onToggleChildReaction: manager.onToggleChildReaction,
       onAddChildReaction: manager.onAddChildReaction,
       onRemoveChildReaction: manager.onRemoveChildReaction,
